@@ -43,10 +43,7 @@ impl Display for CValue {
     }
 }
 
-struct Op {
-    _args: u8,
-    action: fn(&mut Vec<CValue>) -> CValue,
-}
+struct Op(fn(&mut Vec<CValue>) -> CValue);
 
 pub struct Env {
     src: String,
@@ -60,34 +57,12 @@ impl Env {
             src: src.to_string(),
             stack: vec![],
             funcs: HashMap::from([
-                (
-                    "+".to_string(),
-                    Box::new(Op {
-                        _args: 2,
-                        action: add,
-                    }),
-                ),
-                (
-                    "-".to_string(),
-                    Box::new(Op {
-                        _args: 2,
-                        action: sub,
-                    }),
-                ),
-                (
-                    "*".to_string(),
-                    Box::new(Op {
-                        _args: 2,
-                        action: mul,
-                    }),
-                ),
-                (
-                    "/".to_string(),
-                    Box::new(Op {
-                        _args: 2,
-                        action: div,
-                    }),
-                ),
+                ("+".to_string(), Box::new(Op(add))),
+                ("-".to_string(), Box::new(Op(sub))),
+                ("*".to_string(), Box::new(Op(mul))),
+                ("/".to_string(), Box::new(Op(div))),
+                ("pi".to_string(), Box::new(Op(pi))),
+                ("e".to_string(), Box::new(Op(e))),
             ]),
         }
     }
@@ -109,18 +84,16 @@ impl Env {
     }
 
     pub fn interpret(&mut self) -> CValue {
-        self.tokenize()
-            .iter()
-            .for_each(|token| match token {
-                CExpression::Op(name) => {
-                    let op = self.funcs.get(name).unwrap();
+        self.tokenize().iter().for_each(|token| match token {
+            CExpression::Op(name) => {
+                let op = self.funcs.get(name).unwrap();
 
-                    let val = (op.action)(&mut self.stack);
+                let val = (op.0)(&mut self.stack);
 
-                    self.stack.push(CValue::from(val))
-                }
-                val => self.stack.push(CValue::from(val.clone())),
-            });
+                self.stack.push(CValue::from(val))
+            }
+            val => self.stack.push(CValue::from(val.clone())),
+        });
         self.stack.pop().unwrap()
     }
 }
