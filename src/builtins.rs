@@ -1,57 +1,72 @@
-use crate::parser::CValue;
+use crate::{
+    error::CError,
+    parser::CValue::{self, Double as CDouble, Int as CInt},
+};
 
-pub fn add(stack: &mut Vec<CValue>) -> CValue {
-    let y = stack.pop().unwrap();
-    let x = stack.pop().unwrap();
+pub fn add(stack: &mut Vec<CValue>) -> Result<CValue, CError> {
+    let [y, x] = pop_n::<2>(&mut stack.clone())?;
 
-    match (x, y) {
-        (CValue::Double(x), CValue::Double(y)) => CValue::Double(x + y),
-        (CValue::Double(x), CValue::Int(y)) => CValue::Double(x + y as f64),
-        (CValue::Int(x), CValue::Double(y)) => CValue::Double(x as f64 + y),
-        (CValue::Int(x), CValue::Int(y)) => CValue::Int(x + y),
-    }
+    Ok(match (x, y) {
+        (CDouble(x), CDouble(y)) => CDouble(x + y),
+        (CDouble(x), CInt(y)) => CDouble(x + y as f64),
+        (CInt(x), CDouble(y)) => CDouble(x as f64 + y),
+        (CInt(x), CInt(y)) => CInt(x + y),
+    })
 }
 
-pub fn sub(stack: &mut Vec<CValue>) -> CValue {
-    let y = stack.pop().unwrap();
-    let x = stack.pop().unwrap();
+pub fn sub(stack: &mut Vec<CValue>) -> Result<CValue, CError> {
+    let [y, x] = pop_n::<2>(&mut stack.clone())?;
 
-    match (x, y) {
-        (CValue::Double(x), CValue::Double(y)) => CValue::Double(x - y),
-        (CValue::Double(x), CValue::Int(y)) => CValue::Double(x - y as f64),
-        (CValue::Int(x), CValue::Double(y)) => CValue::Double(x as f64 - y),
-        (CValue::Int(x), CValue::Int(y)) => CValue::Int(x - y),
-    }
+    Ok(match (x, y) {
+        (CDouble(x), CDouble(y)) => CDouble(x - y),
+        (CDouble(x), CInt(y)) => CDouble(x - y as f64),
+        (CInt(x), CDouble(y)) => CDouble(x as f64 - y),
+        (CInt(x), CInt(y)) => CInt(x - y),
+    })
 }
 
-pub fn mul(stack: &mut Vec<CValue>) -> CValue {
-    let y = stack.pop().unwrap();
-    let x = stack.pop().unwrap();
+pub fn mul(stack: &mut Vec<CValue>) -> Result<CValue, CError> {
+    let [y, x] = pop_n::<2>(&mut stack.clone())?;
 
-    match (x, y) {
-        (CValue::Double(x), CValue::Double(y)) => CValue::Double(x * y),
-        (CValue::Double(x), CValue::Int(y)) => CValue::Double(x * y as f64),
-        (CValue::Int(x), CValue::Double(y)) => CValue::Double(x as f64 * y),
-        (CValue::Int(x), CValue::Int(y)) => CValue::Int(x * y),
-    }
+    Ok(match (x, y) {
+        (CDouble(x), CDouble(y)) => CDouble(x * y),
+        (CDouble(x), CInt(y)) => CDouble(x * y as f64),
+        (CInt(x), CDouble(y)) => CDouble(x as f64 * y),
+        (CInt(x), CInt(y)) => CInt(x * y),
+    })
 }
 
-pub fn div(stack: &mut Vec<CValue>) -> CValue {
-    let y = stack.pop().unwrap();
-    let x = stack.pop().unwrap();
+pub fn div(stack: &mut Vec<CValue>) -> Result<CValue, CError> {
+    let [y, x] = pop_n::<2>(&mut stack.clone())?;
 
-    match (x, y) {
-        (CValue::Double(x), CValue::Double(y)) => CValue::Double(x / y),
-        (CValue::Double(x), CValue::Int(y)) => CValue::Double(x / y as f64),
-        (CValue::Int(x), CValue::Double(y)) => CValue::Double(x as f64 / y),
-        (CValue::Int(x), CValue::Int(y)) => CValue::Int(x / y),
-    }
+    Ok(match (x, y) {
+        (CDouble(x), CDouble(y)) => CDouble(x / y),
+        (CDouble(x), CInt(y)) => CDouble(x / y as f64),
+        (CInt(x), CDouble(y)) => CDouble(x as f64 / y),
+        (CInt(x), CInt(y)) => CInt(x / y),
+    })
 }
 
-pub fn pi(_stack: &mut Vec<CValue>) -> CValue {
-    CValue::Double(std::f64::consts::PI)
+pub fn pi(_stack: &mut Vec<CValue>) -> Result<CValue, CError> {
+    Ok(CDouble(std::f64::consts::PI))
 }
 
-pub fn e(_stack: &mut Vec<CValue>) -> CValue {
-    CValue::Double(std::f64::consts::E)
+pub fn e(_stack: &mut Vec<CValue>) -> Result<CValue, CError> {
+    Ok(CDouble(std::f64::consts::E))
+}
+
+fn pop_n<const N: usize>(stack: &mut Vec<CValue>) -> Result<[CValue; N], CError> {
+    let vals = [CValue::Int(0); N];
+    let mut index = 0;
+
+    vals.try_map(|_val| {
+        index += 1;
+        match stack.pop() {
+            None => Err(CError::IncorrectNumArgs {
+                expected: N,
+                found: index - 1,
+            }),
+            Some(val) => Ok(val),
+        }
+    })
 }

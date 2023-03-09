@@ -1,6 +1,6 @@
-use std::{collections::HashMap, fmt::Display, vec};
+use std::{collections::HashMap, fmt::Display};
 
-use crate::builtins::*;
+use crate::{builtins::*, error::CError};
 
 #[derive(Debug, Clone)]
 pub enum CExpression {
@@ -37,13 +37,13 @@ impl From<CExpression> for CValue {
 impl Display for CValue {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            Self::Double(num) => write!(f, "{}", num),
-            Self::Int(num) => write!(f, "{}", num),
+            CValue::Double(num) => write!(f, "{}", num),
+            CValue::Int(num) => write!(f, "{}", num),
         }
     }
 }
 
-struct Op(fn(&mut Vec<CValue>) -> CValue);
+struct Op(fn(&mut Vec<CValue>) -> Result<CValue, CError>);
 
 pub struct Env {
     src: String,
@@ -70,30 +70,39 @@ impl Env {
     pub fn tokenize(&self) -> Vec<CExpression> {
         self.src
             .split_whitespace()
-            .map(|token| match token {
-                num if num.starts_with(|c: char| c.is_numeric() || c == '.') => {
-                    if num.contains('.') {
-                        CExpression::Double(num.parse().unwrap())
-                    } else {
-                        CExpression::Int(num.parse().unwrap())
-                    }
-                }
-                op => CExpression::Op(op.into()),
+            .map(|token| match token.parse::<i64>() {
+                Ok(i) => CExpression::Int(i),
+                Err(_) => match token.parse::<f64>() {
+                    Ok(f) => CExpression::Double(f),
+                    Err(_) => CExpression::Op(token.to_string()),
+                },
             })
             .collect()
     }
 
-    pub fn interpret(&mut self) -> CValue {
-        self.tokenize().iter().for_each(|token| match token {
-            CExpression::Op(name) => {
-                let op = self.funcs.get(name).unwrap();
+    pub fn interpret(&mut self) -> String {
+        match self
+            .tokenize()
+            .iter()
+            .try_for_each(|token| -> Result<(), CError> {
+                match token {
+                    CExpression::Op(name) => Ok({
+                        let Some(op) = self.funcs.get(name) else {
+                            return Err(CError::OpNotFound);
+                        };
 
-                let val = (op.0)(&mut self.stack);
+                        let val = (op.0)(&mut self.stack);
 
-                self.stack.push(CValue::from(val))
-            }
-            val => self.stack.push(CValue::from(val.clone())),
-        });
-        self.stack.pop().unwrap()
+                        self.stack.push(CValue::from(val?));
+                    }),
+                    val => Ok(self.stack.push(CValue::from(val.clone()))),
+                }
+            }) {
+            Err(e) => e.to_string(),
+            Ok(()) => match self.stack.pop() {
+                None => "".into(),
+                Some(val) => val.to_string(),
+            },
+        }
     }
 }

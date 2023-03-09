@@ -1,9 +1,10 @@
-#![feature(array_chunks)]
+#![feature(array_try_map)]
 
 use parser::Env;
 use rustyline::{error::ReadlineError, DefaultEditor};
 
 pub mod builtins;
+pub mod error;
 pub mod parser;
 
 pub fn repl() -> rustyline::Result<()> {
@@ -42,3 +43,7 @@ pub fn repl() -> rustyline::Result<()> {
 
     Ok(())
 }
+
+// lazy_static! {
+//     static ref NUMBER: Regex = Regex::new(r"[-+]?([0-9]*[.])?[0-9]+([eE][-+]?\d+)?").unwrap();
+// }
