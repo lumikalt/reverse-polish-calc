@@ -19,13 +19,14 @@ pub fn repl() -> rustyline::Result<()> {
         let input = rl.readline("> ");
 
         match input {
-            Ok(line) => {
-                rl.add_history_entry(line.as_str())?;
-                rl.save_history("history.txt")?;
-
-                let result = Env::new(line).interpret();
-                println!("{}", result);
-            }
+            Ok(line) => match Env::new(line.clone()).interpret() {
+                Ok(res) => {
+                    rl.add_history_entry(line.as_str())?;
+                    rl.save_history("history.txt")?;
+                    println!("{}", res)
+                }
+                Err(err) => eprintln!("Error: {}", err),
+            },
             Err(ReadlineError::Interrupted) => {
                 eprintln!("C-c");
                 break;

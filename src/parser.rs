@@ -80,7 +80,7 @@ impl Env {
             .collect()
     }
 
-    pub fn interpret(&mut self) -> String {
+    pub fn interpret(&mut self) -> Result<String, String> {
         match self
             .tokenize()
             .iter()
@@ -98,11 +98,11 @@ impl Env {
                     val => Ok(self.stack.push(CValue::from(val.clone()))),
                 }
             }) {
-            Err(e) => e.to_string(),
-            Ok(()) => match self.stack.pop() {
+            Err(e) => Err(e.to_string()),
+            Ok(()) => Ok(match self.stack.pop() {
                 None => "".into(),
                 Some(val) => val.to_string(),
-            },
+            }),
         }
     }
 }
